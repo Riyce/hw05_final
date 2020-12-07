@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}{{ user.username }}{% endblock %}
+{% block header %}{% endblock %}
+{% load user_filters %}
+{% block content %}
+{% csrf_token %}
+    <main role="main" class="container">
+        <div class="row">
+            {% include 'includes/profile_card.html' with author=author following=following%}
+            <div class="col-md-9">                
+                {% for post in page %}
+                    {% include "includes/post_item.html" with post=post %} 
+                {% endfor %}
+                {% if page.has_other_pages %}
+                    {% include "includes/paginator.html" with items=page paginator=paginator%}
+                {% endif %}
+            </div>
+        </div>
+    </main> 
+{% endblock %}
