@@ -5,6 +5,7 @@ from django import forms
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.flatpages.models import FlatPage, Site
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.cache import cache
 from django.test import Client, TestCase
 from django.urls import reverse
@@ -61,64 +62,26 @@ class PagesTests(TestCase):
             group=PagesTests.group1,
             author=cls.user,
         )
+        cls.Post_edit = reverse(
+            'post_edit',
+            kwargs={
+                'username': PagesTests.post.author,
+                'post_id': PagesTests.post.pk
+            }
+        )
+        cls.Post_page = reverse(
+            'post',
+            kwargs={
+                'username': PagesTests.post.author.username,
+                'post_id': PagesTests.post.pk
+            }
+        )
         settings.MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
 
     @classmethod
     def tearDownClass(cls):
         shutil.rmtree(settings.MEDIA_ROOT, ignore_errors=True)
         super().tearDownClass()
-
-    def test_pages_uses_correct_template(self):
-        templates_pages_names = {
-            'index.html': reverse('index'),
-            'new.html': reverse('new_post'),
-            'group.html':
-            reverse('group', kwargs={'slug': PagesTests.group1.slug}),
-            'profile.html':
-            reverse('profile', kwargs={'username': PagesTests.user.username}),
-            'post.html':
-            reverse(
-                'post',
-                kwargs={
-                    'username': PagesTests.post.author.username,
-                    'post_id': PagesTests.post.pk
-                }
-            )
-        }
-        for template, reverse_name in templates_pages_names.items():
-            with self.subTest():
-                response = PagesTests.author.get(reverse_name)
-                self.assertTemplateUsed(response, template)
-
-    def test_home_page_shows_correct_context(self):
-        response = PagesTests.author.get(reverse('index'))
-        post_text = response.context.get('page')[0].text
-        post_author = response.context.get('page')[0].author
-        post_group = response.context.get('page')[0].group
-        post_pub_date = response.context.get('page')[0].pub_date
-        paginator = response.context.get('paginator').per_page
-        posts_count = response.context.get('paginator').count
-        self.assertEqual(post_text, PagesTests.post.text)
-        self.assertEqual(post_author, PagesTests.post.author)
-        self.assertEqual(post_group, PagesTests.post.group)
-        self.assertEqual(post_pub_date, PagesTests.post.pub_date)
-        self.assertEqual(paginator, 10)
-        self.assertEqual(posts_count, 1)
-
-    def test_group_page_shows_correct_context(self):
-        response = PagesTests.author.get(
-            reverse('group', kwargs={'slug': 'test-slug'})
-        )
-        post_text = response.context.get('page')[0].text
-        post_author = response.context.get('page')[0].author
-        post_group = response.context.get('page')[0].group
-        post_pub_date = response.context.get('page')[0].pub_date
-        paginator = response.context.get('paginator').per_page
-        self.assertEqual(post_text, PagesTests.post.text)
-        self.assertEqual(post_author, PagesTests.post.author)
-        self.assertEqual(post_group, PagesTests.post.group)
-        self.assertEqual(post_pub_date, PagesTests.post.pub_date)
-        self.assertEqual(paginator, 10)
 
     def test_new_post_shows_correct_context(self):
         response = PagesTests.author.get(reverse('new_post'))
@@ -133,15 +96,7 @@ class PagesTests(TestCase):
                 self.assertIsInstance(form_field, expected)
 
     def test_edit_post_shows_correct_context(self):
-        response = PagesTests.author.get(
-            reverse(
-                'post_edit',
-                kwargs={
-                    'username': PagesTests.post.author,
-                    'post_id': PagesTests.post.pk
-                }
-            )
-        )
+        response = PagesTests.author.get(PagesTests.Post_edit)
         form_fields = {
             'text': forms.fields.CharField,
             'group': forms.fields.ChoiceField,
@@ -151,47 +106,42 @@ class PagesTests(TestCase):
                 form_field = response.context.get('form').fields.get(value)
                 self.assertIsInstance(form_field, expected)
 
-    def test_profile_page_shows_correct_context(self):
-        response = PagesTests.author.get(
-            reverse('profile', kwargs={'username': PagesTests.user.username})
-        )
-        post_text = response.context.get('page')[0].text
-        post_author = response.context.get('page')[0].author
-        post_group = response.context.get('page')[0].group
-        post_pub_date = response.context.get('page')[0].pub_date
-        author_username = response.context.get('author').username
-        author_posts_count = response.context.get('author').posts.count()
-        paginator = response.context.get('paginator').per_page
-        self.assertEqual(post_text, PagesTests.post.text)
-        self.assertEqual(post_author, PagesTests.post.author)
-        self.assertEqual(post_group, PagesTests.post.group)
-        self.assertEqual(post_pub_date, PagesTests.post.pub_date)
-        self.assertEqual(author_username, PagesTests.user.username)
-        self.assertEqual(author_posts_count, PagesTests.user.posts.count())
-        self.assertEqual(paginator, 10)
+    def author_correct_context(self):
+        responses = [
+            reverse('profile', kwargs={'username': PagesTests.user.username}),
+            PagesTests.Post_page
+        ]
+        for url in responses:
+            with self.subTest():
+                response = PagesTests.author.get(url)
+                author = response.context['author']
+                self.assertEqual(author, PagesTests.user)
 
-    def test_post_page_shows_correct_context(self):
-        response = PagesTests.author.get(
-            reverse(
-                'post',
-                kwargs={
-                    'username': PagesTests.post.author.username,
-                    'post_id': PagesTests.post.pk
-                }
-            )
-        )
-        post_text = response.context.get('post').text
-        post_author = response.context.get('post').author
-        post_group = response.context.get('post').group
-        post_pub_date = response.context.get('post').pub_date
-        author_username = response.context.get('author').username
-        author_posts_count = response.context.get('author').posts.count()
-        self.assertEqual(post_text, PagesTests.post.text)
-        self.assertEqual(post_author, PagesTests.post.author)
-        self.assertEqual(post_group, PagesTests.post.group)
-        self.assertEqual(post_pub_date, PagesTests.post.pub_date)
-        self.assertEqual(author_username, PagesTests.user.username)
-        self.assertEqual(author_posts_count, PagesTests.user.posts.count())
+    def paginator_correct_context(self):
+        responses = [
+            reverse('index'),
+            reverse('group', kwargs={'slug': 'test-slug'}),
+            reverse('profile', kwargs={'username': PagesTests.user.username}),
+            reverse('follow_index'),
+        ]
+        for url in responses:
+            with self.subTest():
+                response = PagesTests.author.get(url)
+                paginator = response.context['paginator']
+                self.assertEqual(paginator, 10)
+
+    def post_correct_context(self):
+        responses = [
+            reverse('index'),
+            reverse('group', kwargs={'slug': 'test-slug'}),
+            reverse('profile', kwargs={'username': PagesTests.user.username}),
+            PagesTests.Post_page,
+        ]
+        for url in responses:
+            with self.subTest():
+                request = PagesTests.author.get(url)
+                post = request.context['page'][0]
+                self.assertEqual(post, PagesTests.post)
 
     def test_flatpages_page_shows_correct_context(self):
         response1 = PagesTests.author.get('/about-author/')
@@ -200,10 +150,10 @@ class PagesTests(TestCase):
         spec_title = response2.context.get('flatpage').title
         author_content = response1.context.get('flatpage').content
         spec_content = response2.context.get('flatpage').content
-        self.assertEqual(author_title, 'Об авторе')
-        self.assertEqual(spec_title, 'О технологиях')
-        self.assertEqual(author_content, '<b>Здесь текст про автора</b>')
-        self.assertEqual(spec_content, '<b>Здесь текст про технологии</b>')
+        self.assertEqual(author_title, PagesTests.flat_about.title)
+        self.assertEqual(spec_title, PagesTests.flat_tech.title)
+        self.assertEqual(author_content, PagesTests.flat_about.content)
+        self.assertEqual(spec_content, PagesTests.flat_tech.content)
 
     def test_post_goes_to_correct_group(self):
         response1 = PagesTests.author.get(
@@ -220,93 +170,81 @@ class PagesTests(TestCase):
         self.assertEqual(PagesTests.group2.posts.count(), 0)
 
     def test_images_on_page(self):
-        with open('posts/tests/file.png', 'rb') as img:
-            PagesTests.author.post(
-                reverse(
-                    'post_edit',
-                    kwargs={
-                        'username': PagesTests.user.username,
-                        'post_id': PagesTests.post.pk
-                    }
-                ),
-                {
-                    'group': PagesTests.group1.pk,
-                    'text': 'Еще один тестовый текст',
-                    'image': img,
-                },
-                follow=True,
-            )
-            post_response = PagesTests.author.get(
-                reverse(
-                    'post',
-                    kwargs={
-                        'username': PagesTests.user.username,
-                        'post_id': PagesTests.post.pk,
-                    }
-                )
-            )
-            group_response = PagesTests.author.get(
-                reverse('group', kwargs={'slug': PagesTests.group1.slug})
-            )
-            profile_response = PagesTests.author.get(
-                reverse(
-                    'profile',
-                    kwargs={'username': PagesTests.user.username}
-                )
-            )
-            index_response = self.client.get(reverse('index'))
-            images_on_pages = [
-                post_response.context.get('post').image,
-                index_response.context.get('page')[0].image,
-                profile_response.context.get('page')[0].image,
-                group_response.context.get('page')[0].image,
-            ]
-            for image in images_on_pages:
-                with self.subTest():
-                    self.assertTrue(image)
-
-    def test_noimage_file(self):
-        with open('posts/tests/text.txt', 'rb') as img:
-            response = PagesTests.author.post(
-                reverse('new_post',),
-                {
-                    'text': 'Еще один тестовый текст',
-                    'image': img,
-                },
-                follow=True,
-            )
-            form = response.context.get('form')
-            self.assertFalse(form.is_valid())
-
-    def test_cache(self):
-        response = PagesTests.guest_client.get(reverse('index'))
-        self.assertContains(response, 'Тестовый текст')
+        small_gif = (b'\x47\x49\x46\x38\x39\x61\x02\x00'
+                b'\x01\x00\x80\x00\x00\x00\x00\x00'
+                b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
+                b'\x00\x00\x00\x2C\x00\x00\x00\x00'
+                b'\x02\x00\x01\x00\x00\x02\x02\x0C'
+                b'\x0A\x00\x3B'
+        )
+        uploaded = SimpleUploadedFile(
+            name='small.gif',
+            content=small_gif,
+            content_type='image/gif'
+        )
         form_data = {
-            'text': 'Кое-что поменяем.',
+            'group': PagesTests.group1.pk,
+            'text': 'Еще один тестовый текст',
+            'image': uploaded,
         }
         PagesTests.author.post(
-            reverse(
-                'post_edit',
-                kwargs={
-                    'username': PagesTests.user.username,
-                    'post_id': PagesTests.post.pk
-                }
-            ),
+            PagesTests.Post_edit,
             data=form_data,
             follow=True,
         )
-        response2 = PagesTests.guest_client.get(reverse('index'))
-        self.assertContains(response2, 'Тестовый текст')
-        cache.clear()
-        response3 = PagesTests.guest_client.get(reverse('index'))
-        self.assertContains(response3, form_data['text'])
+        post_response = PagesTests.author.get(PagesTests.Post_page)
+        group_response = PagesTests.author.get(
+                reverse('group', kwargs={'slug': PagesTests.group1.slug})
+        )
+        profile_response = PagesTests.author.get(
+            reverse('profile', kwargs={'username': PagesTests.user.username})
+        )
+        index_response = self.client.get(reverse('index'))
+        images_on_pages = [
+            post_response.context.get('post').image,
+            index_response.context.get('page')[0].image,
+            profile_response.context.get('page')[0].image,
+            group_response.context.get('page')[0].image,
+        ]
+        for image in images_on_pages:
+            with self.subTest():
+                self.assertTrue(image)
 
-    def test_follow_page(self):
-        response1 = PagesTests.authorized_client1.get(reverse('follow_index'))
-        response2 = PagesTests.authorized_client2.get(reverse('follow_index'))
-        with_follow_count = response1.context.get('paginator').count
-        without_follow_count = response2.context.get('paginator').count
-        with_follow_text = response1.context.get('page')[0].text
-        self.assertEqual(with_follow_count, 1)
-        self.assertEqual(without_follow_count, 0)
-        self.assertEqual(with_follow_text, 'Тестовый текст')
+    def test_noimage_file(self):
+        image = SimpleUploadedFile(
+            name='small.txt',
+            content=None,
+            content_type='text/plain',
+        )
+        form_data = {
+            'group': PagesTests.group1.pk,
+            'text': 'Еще один тестовый текст',
+            'image': image,
+        }
+        response = PagesTests.author.post(
+            reverse('new_post',),
+            data=form_data,
+            follow=True,
+        )
+        form = response.context['form']
+        self.assertFalse(form.is_valid())
+
+    def test_follow_page_for_user_with_following(self):
+        response = PagesTests.authorized_client1.get(reverse('follow_index'))
+        post = response.context['page'][0]
+        self.assertEqual(post, PagesTests.post)
+
+    def test_follow_page_for_user_without_following(self):
+        response = PagesTests.authorized_client2.get(reverse('follow_index'))
+        posts_count = response.context['paginator'].count
+        self.assertEqual(posts_count, 0)
+
+    def test_cache(self):
+        page = PagesTests.guest_client.get(reverse('index')).content
+        PagesTests.post.text = 'Новый текст поста'
+        PagesTests.post.save()
+        content1 = PagesTests.guest_client.get(reverse('index')).content
+        self.assertEqual(content1, page)
+        cache.clear()
+        content2 = PagesTests.guest_client.get(reverse('index')).content
+        self.assertNotEqual(content2, page)

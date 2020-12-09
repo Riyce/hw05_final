@@ -66,7 +66,7 @@ class Comment(models.Model):
     )
 
     def __str__(self):
-        return self.text
+        return self.text[:25]
 
     class Meta:
         ordering = ('-created',)
@@ -77,9 +77,13 @@ class Follow(models.Model):
         User,
         on_delete=models.CASCADE,
         related_name='follower',
+        blank=True,
+        null=True,
     )
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name='following',
+        blank=True,
+        null=True,
     )

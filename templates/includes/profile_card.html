@@ -5,7 +5,7 @@
                 {{ author.get_full_name }}
             </div>
             <div class="h3 text-muted">
-                @{{ author.username }}
+                <a href="{% url 'profile' author.username %}">@{{ author.username }}</a>
             </div>
         </div>                        
         <ul class="list-group list-group-flush">
@@ -22,15 +22,14 @@
                 {% if request.user != author %}
                     <li class="list-group-item">
                         {% if following == True %}
-                        <a class="btn btn-lg btn-light" 
-                            href="{% url 'profile_unfollow' author.username %}" role="button">
-                            Отписаться 
-                        </a> 
+                            <a class="btn btn-lg btn-light" 
                         {% else %}
-                        <a class="btn btn-lg btn-primary"   
-                            href="{% url 'profile_follow' author.username %}" role="button">
-                            Подписаться 
-                        </a>
+                            <a class="btn btn-lg btn-primary"
+                        {% endif %}
+                        {% if following == True %}
+                            href="{% url 'profile_unfollow' author.username %}" role="button">Отписаться</a> 
+                        {% else %}
+                            href="{% url 'profile_follow' author.username %}" role="button">Подписаться</a>
                         {% endif %}
                     </li> 
                 {% endif %}

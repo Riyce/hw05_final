@@ -19,17 +19,11 @@ class PostForm(forms.ModelForm):
             "image": ("Добавьте изображение."),
         }
 
-    def clean_text(self):
-        data = self.cleaned_data['text']
-        if len(data) < 10:
-            raise forms.ValidationError("Слишком короткий текст!")
-        return data
-
 
 class CommentForm(forms.ModelForm):
     class Meta:
         model = Comment
         fields = ('text',)
-        labels = {"text": "Текст комментария"}
-        help_texts = {"text": "Введите текст Вашего комментария."}
+        labels = {'text': "Текст комментария"}
+        help_texts = {'text': "Введите текст Вашего комментария."}
         widgets = {'text': Textarea()}
