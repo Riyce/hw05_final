@@ -44,16 +44,14 @@ def new_post(request):
 
 def profile(request, username):
     author = get_object_or_404(User, username=username)
-    list = author.posts.all()
-    paginator = Paginator(list, 10)
+    posts = author.posts.all()
+    paginator = Paginator(posts, 10)
     page_number = request.GET.get('page')
     page = paginator.get_page(page_number)
-    following = False
-    if User.objects.filter(username=request.user.username).exists():
-        following = Follow.objects.filter(
-            user=request.user,
-            author=author
-        ).exists()
+    following = Follow.objects.filter(
+        user=request.user,
+        author__username=username
+    ).exists()
     return render(
         request,
         'profile.html',
@@ -70,12 +68,10 @@ def post_view(request, username, post_id):
     post = get_object_or_404(Post, pk=post_id, author__username=username)
     comments = post.comments.all()
     form = CommentForm(request.POST or None)
-    following = False
-    if User.objects.filter(username=request.user.username).exists():
-        following = Follow.objects.filter(
-            user=request.user,
-            author=post.author
-        ).exists()
+    following = Follow.objects.filter(
+        user=request.user,
+        author__username=username
+    ).exists()
     return render(
         request,
         'post.html',
@@ -88,6 +84,7 @@ def post_view(request, username, post_id):
     )
 
 
+@login_required
 def post_edit(request, username, post_id):
     if request.user.username != username:
         return redirect('post', username=username, post_id=post_id)
@@ -98,7 +95,7 @@ def post_edit(request, username, post_id):
         instance=post
     )
     if form.is_valid():
-        form.save()
+        post.save()
         return redirect(
             'post',
             username=username,
@@ -143,8 +140,8 @@ def server_error(request):
 
 @login_required
 def follow_index(request):
-    list = Post.objects.filter(author__following__user=request.user).all()
-    paginator = Paginator(list, 10)
+    posts = Post.objects.filter(author__following__user=request.user).all()
+    paginator = Paginator(posts, 10)
     page_number = request.GET.get('page')
     page = paginator.get_page(page_number)
     return render(

@@ -10,8 +10,10 @@ class StaticURLTests(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.guest_client = Client()
-        cls.user1 = User.objects.create_user(username='Oleg')
-        cls.user2 = User.objects.create_user(username='Olegson')
+        cls.username1 = 'Oleg'
+        cls.username2 = 'Olegson'
+        cls.user1 = User.objects.create_user(username=cls.username1)
+        cls.user2 = User.objects.create_user(username=cls.username2)
         cls.author = Client()
         cls.author.force_login(cls.user1)
         cls.authorized_client = Client()
@@ -20,6 +22,7 @@ class StaticURLTests(TestCase):
             user=cls.user1,
             author=cls.user2,
         )
+        cls.follow.save()
         cls.site = Site.objects.get_current()
         cls.site.save()
         cls.flat_about = FlatPage.objects.create(
@@ -40,142 +43,115 @@ class StaticURLTests(TestCase):
             text='Тестовый текст',
             author=cls.user1,
         )
+        cls.slug = 'test-slug'
         cls.group = Group.objects.create(
             title='Тестовая группа',
             description='Тестовое описание группы',
-            slug='test-slug'
+            slug=cls.slug
         )
-        cls.Post_page = reverse(
-            'post',
-            kwargs={
-                'username': StaticURLTests.user1.username,
-                'post_id': StaticURLTests.post.pk
-            }
-        )
-        cls.Post_edit_page = reverse(
-            'post_edit',
-            kwargs={
-                'username': StaticURLTests.user1.username,
-                'post_id': StaticURLTests.post.pk
-            }
-        )
-        cls.Add_comment = reverse(
-            'add_comment',
-            kwargs={
-                'username': StaticURLTests.user1.username,
-                'post_id': StaticURLTests.post.pk
-            }
-        )
+        cls.INDEX = reverse('index')
+        cls.FOLLOW_PAGE = reverse('follow_index')
+        cls.GROUP = reverse('group', args=[cls.slug])
+        cls.NEW = reverse('new_post')
+        cls.PROFILE = reverse('profile', args=[cls.username1])
+        cls.ABOUT = reverse('about')
+        cls.ABOUT_SPEC = reverse('about-spec')
+        cls.NOT_FOUND = '/example/'
 
     def test_pages_for_client(self):
         status_codes = {
-            reverse('index'): 200,
-            reverse('new_post'): 302,
-            reverse(
-                'group',
-                kwargs={'slug': StaticURLTests.group.slug, }
-            ):
-            200,
-            reverse(
-                'profile',
-                kwargs={'username': StaticURLTests.user1.username, }
-            ):
-            200,
-            StaticURLTests.Post_page: 200,
-            StaticURLTests.Post_edit_page: 302,
-            reverse('about'): 200,
-            reverse('about-spec'): 200,
-            StaticURLTests.Add_comment: 302,
+            self.INDEX: 200,
+            self.FOLLOW_PAGE: 302,
+            self.NEW: 302,
+            self.GROUP: 200,
+            self.PROFILE: 200,
+            self.ABOUT: 200,
+            self.ABOUT_SPEC: 200,
+            self.NOT_FOUND: 404,
+            reverse('post', args=[self.username1, self.post.pk]): 200,
+            reverse('post_edit', args=[self.username1, self.post.pk]): 302,
+            reverse('add_comment', args=[self.username1, self.post.pk]): 302,
         }
         for url, code in status_codes.items():
             with self.subTest():
-                response = StaticURLTests.guest_client.get(url)
+                response = self.guest_client.get(url)
                 self.assertEqual(response.status_code, code)
 
     def test_pages_for_user(self):
         status_codes = {
-            reverse('index'): 200,
-            reverse('new_post'): 200,
-            reverse(
-                'group',
-                kwargs={'slug': StaticURLTests.group.slug, }
-            ):
-            200,
-            reverse(
-                'profile',
-                kwargs={'username': StaticURLTests.user1.username, }
-            ):
-            200,
-            StaticURLTests.Post_page: 200,
-            StaticURLTests.Post_edit_page: 302,
-            reverse('about'): 200,
-            reverse('about-spec'): 200,
-            '/example/': 404,
+            self.INDEX: 200,
+            self.NEW: 200,
+            self.FOLLOW_PAGE: 200,
+            self.GROUP: 200,
+            self.PROFILE: 200,
+            self.ABOUT: 200,
+            self.ABOUT_SPEC: 200,
+            self.NOT_FOUND: 404,
+            reverse('post', args=[self.username1, self.post.pk]): 200,
+            reverse('post_edit', args=[self.username1, self.post.pk]): 302,
         }
         for url, code in status_codes.items():
             with self.subTest():
-                response = StaticURLTests.authorized_client.get(url)
+                response = self.authorized_client.get(url)
                 self.assertEqual(response.status_code, code)
 
-    def test_reditect_from_edit_page(self):
+    def test_redirect(self):
         redirects = {
-            StaticURLTests.guest_client: StaticURLTests.Post_page,
-            StaticURLTests.authorized_client: StaticURLTests.Post_page,
+            self.guest_client:
+            reverse('login')
+            + '?next='
+            + reverse('post_edit', args=[self.username1, self.post.pk]),
+            self.authorized_client:
+            reverse('post', args=[self.user1.username, self.post.pk]),
         }
-        for users, adress in redirects.items():
+        for client, url in redirects.items():
             with self.subTest():
-                response = users.post(StaticURLTests.Post_edit_page)
-                self.assertRedirects(response, adress)
+                response = client.post(
+                    reverse('post_edit', args=[self.username1, self.post.pk])
+                )
+                self.assertRedirects(response, url)
 
     def test_edit_post_page_for_author(self):
-        response = StaticURLTests.author.get(StaticURLTests.Post_edit_page)
+        response = self.author.get(
+            reverse('post_edit', args=[self.username1, self.post.pk])
+        )
         self.assertEqual(response.status_code, 200)
 
     def test_urls_uses_correct_template(self):
         templates_url_names = {
-            reverse('index'): 'index.html',
-            reverse('new_post'): 'new.html',
-            reverse(
-                'group',
-                kwargs={'slug': StaticURLTests.group.slug, }
-            ):
-            'group.html',
-            StaticURLTests.Post_edit_page: 'new.html',
-            reverse('about'): 'flatpages/default.html',
-            reverse('about-spec'): 'flatpages/default.html',
-            reverse(
-                'profile',
-                kwargs={'username': StaticURLTests.user1.username, }
-            ):
-            'profile.html',
-            reverse('follow_index'): 'follow.html',
+            self.INDEX: 'index.html',
+            self.NEW: 'new.html',
+            self.GROUP: 'group.html',
+            self.ABOUT: 'flatpages/default.html',
+            self.ABOUT_SPEC: 'flatpages/default.html',
+            self.PROFILE: 'profile.html',
+            self.FOLLOW_PAGE: 'follow.html',
+            reverse('post', args=[self.username1, self.post.pk]): 'post.html',
+            reverse('post_edit', args=[self.username1, self.post.pk]):
+            'new.html',
         }
         for url, template in templates_url_names.items():
             with self.subTest():
-                response = StaticURLTests.author.get(url)
+                response = self.author.get(url)
                 self.assertTemplateUsed(response, template)
 
-    def test_folloing(self):
-        count = StaticURLTests.user2.follower.count()
-        StaticURLTests.authorized_client.get(
+    def test_following(self):
+        self.authorized_client.get(
             reverse(
                 'profile_follow',
-                kwargs={'username': StaticURLTests.user1.username}
+                args=[self.username1]
             )
         )
-        follow = Follow.objects.last()
-        user = follow.user
-        author = follow.author
-        self.assertEqual(StaticURLTests.user2.follower.count(), count+1)
-        self.assertEqual(user, StaticURLTests.user2)
-        self.assertEqual(author, StaticURLTests.user1)
+        follow = Follow.objects.filter(
+            user=self.user2, author=self.user1
+        ).exists()
+        self.assertTrue(follow)
 
-    def test_unfolloing(self):
-        count = StaticURLTests.user1.follower.count()
-        StaticURLTests.author.get(
-            reverse(
-                'profile_unfollow',
-                kwargs={'username': StaticURLTests.user2.username}
-            )
+    def test_unfollowing(self):
+        self.author.get(
+            reverse('profile_unfollow', args=[self.username2])
         )
-        self.assertEqual(StaticURLTests.user2.follower.count(), count-1)
+        follow = Follow.objects.filter(
+            user=self.user1, author=self.user2
+        ).exists()
+        self.assertFalse(follow)

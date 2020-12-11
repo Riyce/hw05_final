@@ -21,21 +21,21 @@ class ModelsTest(TestCase):
         )
 
     def test_group_verbose_name(self):
-        group = ModelsTest.group
+        group = self.group
         verbose = group._meta.get_field('title').verbose_name
         self.assertEquals(verbose, 'Название группы')
 
     def test_group_name_is_title_fild(self):
-        group = ModelsTest.group
+        group = self.group
         expected_object_name = group.title
         self.assertEquals(expected_object_name, str(group))
 
     def test_post_verbose_name(self):
-        post = ModelsTest.post
+        post = self.post
         verbose = post._meta.get_field('text').verbose_name
         self.assertEquals(verbose, 'Текст')
 
     def test_post_text_is_title_fild(self):
-        post = ModelsTest.post
+        post = self.post
         expected_object_name = post.text[:15]
         self.assertEquals(expected_object_name, str(post))
