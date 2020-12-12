@@ -1,4 +1,5 @@
 from django.contrib.auth.decorators import login_required
+from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect, render
 
@@ -39,6 +40,7 @@ def new_post(request):
     post = form.save(commit=False)
     post.author = request.user
     post.save()
+    cache.clear()
     return redirect('index')
 
 
@@ -48,10 +50,13 @@ def profile(request, username):
     paginator = Paginator(posts, 10)
     page_number = request.GET.get('page')
     page = paginator.get_page(page_number)
-    following = User.objects.filter(
-        username=request.user,
-        follower__author__username=username
-    ).exists()
+    following = (
+        request.user.is_authenticated and
+        Follow.objects.filter(
+            user=request.user,
+            author__username=username
+        ).exists()
+    )
     return render(
         request,
         'profile.html',
@@ -68,10 +73,13 @@ def post_view(request, username, post_id):
     post = get_object_or_404(Post, pk=post_id, author__username=username)
     comments = post.comments.all()
     form = CommentForm(request.POST or None)
-    following = User.objects.filter(
-        username=request.user,
-        follower__author__username=username
-    ).exists()
+    following = (
+        request.user.is_authenticated and
+        Follow.objects.filter(
+            user=request.user,
+            author__username=username
+        ).exists()
+    )
     return render(
         request,
         'post.html',
@@ -95,7 +103,8 @@ def post_edit(request, username, post_id):
         instance=post
     )
     if form.is_valid():
-        post.save()
+        form.save()
+        cache.clear()
         return redirect(
             'post',
             username=username,

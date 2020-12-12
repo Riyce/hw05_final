@@ -1,15 +1,16 @@
-from django.contrib.auth import get_user_model
 from django.test import TestCase
 
-from posts.models import Group, Post
+from posts.models import Group, Post, User
+
+USERNAME = 'Oleg'
+SLUG = 'slug'
 
 
 class ModelsTest(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        User = get_user_model()
-        cls.user = User.objects.create_user(username='Oleg')
+        cls.user = User.objects.create_user(username=USERNAME)
         cls.post = Post.objects.create(
             text='Тестовый текст с длиной больше 15 символов',
             author=cls.user,
@@ -17,7 +18,7 @@ class ModelsTest(TestCase):
         cls.group = Group.objects.create(
             title='Тестовая группа',
             description='Тестовое поисание',
-            slug='test-task'
+            slug=SLUG
         )
 
     def test_group_verbose_name(self):

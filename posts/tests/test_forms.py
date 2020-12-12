@@ -5,23 +5,25 @@ from django.urls import reverse
 from posts.forms import PostForm
 from posts.models import Group, Post, User
 
+USERNAME = 'Oleg'
+SLUG = 'test-slug'
+INDEX = reverse('index')
+NEW = reverse('new_post')
+
 
 class PostFormTests(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.username = 'Oleg'
-        cls.user = User.objects.create_user(username=cls.username)
-        cls.author = Client()
-        cls.author.force_login(cls.user)
+        cls.user = User.objects.create_user(username=USERNAME)
+        cls.authorized_client = Client()
+        cls.authorized_client.force_login(cls.user)
         cls.group = Group.objects.create(
             title='Тестовая группа',
             description='Тестовое описание группы',
-            slug='test-slug',
+            slug=SLUG,
         )
         cls.form = PostForm()
-        cls.INDEX = reverse('index')
-        cls.NEW = reverse('new_post')
 
     def setUp(self):
         self.post = Post.objects.create(
@@ -29,11 +31,11 @@ class PostFormTests(TestCase):
             author=self.user,
         )
         self.EDIT = reverse(
-            'post_edit', args=[self.username, self.post.pk]
+            'post_edit', args=[USERNAME, self.post.pk]
         )
 
     def test_new_post_shows_correct_context(self):
-        response = self.author.get(self.NEW)
+        response = self.authorized_client.get(NEW)
         form_fields = {
             'text': forms.fields.CharField,
             'group': forms.fields.ChoiceField,
@@ -45,7 +47,7 @@ class PostFormTests(TestCase):
                 self.assertIsInstance(form_field, expected)
 
     def test_edit_post_shows_correct_context(self):
-        response = self.author.get(self.EDIT)
+        response = self.authorized_client.get(self.EDIT)
         form_fields = {
             'text': forms.fields.CharField,
             'group': forms.fields.ChoiceField,
@@ -84,33 +86,29 @@ class PostFormTests(TestCase):
             'text': 'Тестовый текст другого поста',
             'group': self.group.pk,
         }
-        self.author.post(
-            self.NEW,
+        self.authorized_client.post(
+            NEW,
             data=form_data,
             follow=True
         )
         count2 = Post.objects.all().count()
-        post = Post.objects.all().first()
-        text = post.text
-        group = post.group
         self.assertEqual(count2, 1)
-        self.assertEqual(text, form_data['text'])
-        self.assertEqual(group.pk, form_data['group'])
+        post = Post.objects.first()
+        self.assertEqual(post.text, form_data['text'])
+        self.assertEqual(post.group.pk, form_data['group'])
 
     def test_edit_post(self):
-        count = Post.objects.all().count()
-        self.assertEqual(count, 1)
         form_data = {
             'text': 'Тестовый текст измененный',
             'group': self.group.pk,
         }
-        self.author.post(
+        self.authorized_client.post(
             self.EDIT,
             data=form_data,
             follow=True,
         )
-        post = Post.objects.all().first()
-        text = post.text
-        group = post.group
-        self.assertEqual(text, form_data['text'])
-        self.assertEqual(group.pk, form_data['group'])
+        count = Post.objects.all().count()
+        self.assertEqual(count, 1)
+        post = Post.objects.first()
+        self.assertEqual(post.text, form_data['text'])
+        self.assertEqual(post.pk, form_data['group'])

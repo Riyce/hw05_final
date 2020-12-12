@@ -2,16 +2,14 @@
 {% block title %}Последние обновления {% endblock %}
 {% block content %}
 <div class="container">
-
     {% include "includes/menu.html" with index=True %}
-
+        {% load cache %} 
+        {% cache 20 index_page request.user.username %} 
         <h1>Последние обновления на сайте</h1>
-        {% load cache %}
-        {% cache 20 index_page %}
-        {% for post in page %}
-            {% include "includes/post_item.html" with post=post %}
+        {% for post in page %} 
+            {% include "includes/post_item.html" with post=post %}    
         {% endfor %}
-        {% endcache %} 
+        {% endcache %}   
         {% if page.has_other_pages %}
             {% include "includes/paginator.html" with items=page paginator=paginator%}
         {% endif %}
