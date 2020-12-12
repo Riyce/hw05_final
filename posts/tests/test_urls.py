@@ -37,7 +37,7 @@ class StaticURLTests(TestCase):
         cls.site = Site.objects.get_current()
         cls.site.save()
         cls.flat_about = FlatPage.objects.create(
-            url='/about/',
+            url='/about-author/',
             title='about me',
             content='<b>content</b>'
         )
