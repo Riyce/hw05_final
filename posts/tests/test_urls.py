@@ -17,6 +17,8 @@ ABOUT_SPEC = reverse('about-spec')
 NOT_FOUND = '/example/'
 FOLLOW = reverse('profile_follow', args=[USERNAME1])
 UNFOLLOW = reverse('profile_unfollow', args=[USERNAME2])
+AUTHOR_URL = '/about-author/'
+SPEC_URL = '/about-spec/'
 
 
 class StaticURLTests(TestCase):
@@ -37,13 +39,13 @@ class StaticURLTests(TestCase):
         cls.site = Site.objects.get_current()
         cls.site.save()
         cls.flat_about = FlatPage.objects.create(
-            url='/about-author/',
+            url=AUTHOR_URL,
             title='about me',
             content='<b>content</b>'
         )
         cls.flat_about.save()
         cls.flat_tech = FlatPage.objects.create(
-            url='/about-spec/',
+            url=SPEC_URL,
             title='about my tech',
             content='<b>content</b>'
         )

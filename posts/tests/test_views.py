@@ -30,6 +30,8 @@ SMALL_GIF = (
     b'\x02\x00\x01\x00\x00\x02\x02\x0C'
     b'\x0A\x00\x3B'
 )
+AUTHOR_URL = '/about-author/'
+SPEC_URL = '/about-spec/'
 
 
 class PagesTests(TestCase):
@@ -43,13 +45,13 @@ class PagesTests(TestCase):
         )
         cls.site = Site.objects.get_current()
         cls.flat_about = FlatPage.objects.create(
-            url='/about-author/',
+            url=AUTHOR_URL,
             title='Об авторе',
             content='<b>Здесь текст про автора</b>'
         )
         cls.flat_about.save()
         cls.flat_tech = FlatPage.objects.create(
-            url='/about-spec/',
+            url=SPEC_URL,
             title='О технологиях',
             content='<b>Здесь текст про технологии</b>'
         )
