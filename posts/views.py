@@ -48,9 +48,9 @@ def profile(request, username):
     paginator = Paginator(posts, 10)
     page_number = request.GET.get('page')
     page = paginator.get_page(page_number)
-    following = Follow.objects.filter(
-        user=request.user,
-        author__username=username
+    following = User.objects.filter(
+        username=request.user,
+        follower__author__username=username
     ).exists()
     return render(
         request,
@@ -68,9 +68,9 @@ def post_view(request, username, post_id):
     post = get_object_or_404(Post, pk=post_id, author__username=username)
     comments = post.comments.all()
     form = CommentForm(request.POST or None)
-    following = Follow.objects.filter(
-        user=request.user,
-        author__username=username
+    following = User.objects.filter(
+        username=request.user,
+        follower__author__username=username
     ).exists()
     return render(
         request,

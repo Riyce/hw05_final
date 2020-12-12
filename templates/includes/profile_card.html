@@ -19,7 +19,7 @@
                 <div class="h6 text-muted">
                     Записей: {{ author.posts.count }}
                 </div>
-                {% if request.user != author %}
+                {% if request.user != author and user.is_authenticated %}
                     <li class="list-group-item"> 
                         {% if following %} 
                             <a class="btn btn-lg btn-light"  
