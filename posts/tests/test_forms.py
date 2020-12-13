@@ -86,14 +86,14 @@ class PostFormTests(TestCase):
             'text': 'Тестовый текст другого поста',
             'group': self.group.pk,
         }
-        self.authorized_client.post(
+        response = self.authorized_client.post(
             NEW,
             data=form_data,
             follow=True
         )
         count2 = Post.objects.all().count()
         self.assertEqual(count2, 1)
-        post = Post.objects.first()
+        post = response.context['page'][0]
         self.assertEqual(post.text, form_data['text'])
         self.assertEqual(post.group.pk, form_data['group'])
 
@@ -102,13 +102,13 @@ class PostFormTests(TestCase):
             'text': 'Тестовый текст измененный',
             'group': self.group.pk,
         }
-        self.authorized_client.post(
+        response = self.authorized_client.post(
             self.EDIT,
             data=form_data,
             follow=True,
         )
         count = Post.objects.all().count()
         self.assertEqual(count, 1)
-        post = Post.objects.first()
+        post = response.context['post']
         self.assertEqual(post.text, form_data['text'])
-        self.assertEqual(post.pk, form_data['group'])
+        self.assertEqual(post.group.pk, form_data['group'])

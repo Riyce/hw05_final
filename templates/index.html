@@ -1,8 +1,8 @@
 {% extends "base.html" %} 
 {% block title %}Последние обновления {% endblock %}
 {% block content %}
-<div class="container">
-    {% include "includes/menu.html" with index=True %}
+    <div class="container">
+        {% include "includes/menu.html" with index=True %}
         {% load cache %} 
         {% cache 20 index_page request.user.username %} 
         <h1>Последние обновления на сайте</h1>
@@ -13,6 +13,5 @@
         {% if page.has_other_pages %}
             {% include "includes/paginator.html" with items=page paginator=paginator%}
         {% endif %}
-
     </div>
 {% endblock %} 

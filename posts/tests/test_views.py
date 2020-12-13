@@ -12,14 +12,13 @@ from posts.models import Follow, Group, Post, User
 
 SLUG1 = 'slug'
 SLUG2 = 'slug2'
-USERNAME = 'Oleg'
-USERNAME1 = 'Olegson'
-USERNAME2 = 'Olegsana'
+USERNAME1 = 'Oleg'
+USERNAME2 = 'Olegson'
 FOLLOW_INDEX = reverse('follow_index')
 INDEX = reverse('index')
 GROUP1 = reverse('group', args=[SLUG1])
 GROUP2 = reverse('group', args=[SLUG2])
-PROFILE = reverse('profile', args=[USERNAME])
+OLEG_PROFILE = reverse('profile', args=[USERNAME1])
 ABOUT = reverse('about')
 ABOUT_SPEC = reverse('about-spec')
 SMALL_GIF = (
@@ -30,8 +29,6 @@ SMALL_GIF = (
     b'\x02\x00\x01\x00\x00\x02\x02\x0C'
     b'\x0A\x00\x3B'
 )
-AUTHOR_URL = '/about-author/'
-SPEC_URL = '/about-spec/'
 
 
 class PagesTests(TestCase):
@@ -45,13 +42,13 @@ class PagesTests(TestCase):
         )
         cls.site = Site.objects.get_current()
         cls.flat_about = FlatPage.objects.create(
-            url=AUTHOR_URL,
+            url=ABOUT,
             title='Об авторе',
             content='<b>Здесь текст про автора</b>'
         )
         cls.flat_about.save()
         cls.flat_tech = FlatPage.objects.create(
-            url=SPEC_URL,
+            url=ABOUT_SPEC,
             title='О технологиях',
             content='<b>Здесь текст про технологии</b>'
         )
@@ -64,18 +61,15 @@ class PagesTests(TestCase):
             slug=SLUG2
         )
         cls.guest_client = Client()
-        cls.user = User.objects.create_user(username=USERNAME)
-        cls.user1 = User.objects.create_user(username=USERNAME1)
-        cls.user2 = User.objects.create_user(username=USERNAME2)
-        cls.author_client = Client()
-        cls.author_client.force_login(cls.user)
-        cls.authorized_client1 = Client()
-        cls.authorized_client1.force_login(cls.user1)
-        cls.authorized_client2 = Client()
-        cls.authorized_client2.force_login(cls.user2)
+        cls.oleg_user = User.objects.create_user(username=USERNAME1)
+        cls.olegson_user = User.objects.create_user(username=USERNAME2)
+        cls.oleg_post_creator_client = Client()
+        cls.oleg_post_creator_client.force_login(cls.oleg_user)
+        cls.olegson_read_only_client = Client()
+        cls.olegson_read_only_client.force_login(cls.olegson_user)
         cls.follow = Follow.objects.create(
-            author=cls.user,
-            user=cls.user1,
+            author=cls.oleg_user,
+            user=cls.olegson_user,
         )
         settings.MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
 
@@ -88,7 +82,7 @@ class PagesTests(TestCase):
         self.post = Post.objects.create(
             text='Тестовый текст',
             group=self.group1,
-            author=self.user,
+            author=self.oleg_user,
         )
         self.POST = reverse(
             'post',
@@ -101,25 +95,25 @@ class PagesTests(TestCase):
 
     def test_author_correct_context(self):
         urls = [
-            PROFILE,
+            OLEG_PROFILE,
             self.POST
         ]
         for url in urls:
             with self.subTest():
-                response = self.author_client.get(url)
+                response = self.olegson_read_only_client.get(url)
                 author = response.context['author']
-                self.assertEqual(author, self.user)
+                self.assertEqual(author, self.oleg_user)
 
     def test_paginator_correct_context(self):
         responses = [
             INDEX,
             GROUP1,
-            PROFILE,
+            OLEG_PROFILE,
             FOLLOW_INDEX
         ]
         for url in responses:
             with self.subTest():
-                response = self.author_client.get(url)
+                response = self.olegson_read_only_client.get(url)
                 paginator = response.context['paginator'].per_page
                 self.assertEqual(paginator, 10)
 
@@ -127,39 +121,38 @@ class PagesTests(TestCase):
         responses = [
             INDEX,
             GROUP1,
-            PROFILE,
+            OLEG_PROFILE,
+            FOLLOW_INDEX,
+            self.POST
         ]
         for url in responses:
             with self.subTest():
-                request = self.author_client.get(url)
-                post = request.context['page'][0]
+                request = self.olegson_read_only_client.get(url)
+                if url == self.POST:
+                    post = request.context['post']
+                else:
+                    post = request.context['page'][0]
                 self.assertEqual(post, self.post)
 
     def test_flatpages_page_shows_correct_context(self):
-        response1 = self.author_client.get(ABOUT)
-        response2 = self.author_client.get(ABOUT_SPEC)
-        author_title = response1.context.get('flatpage').title
-        spec_title = response2.context.get('flatpage').title
-        author_content = response1.context.get('flatpage').content
-        spec_content = response2.context.get('flatpage').content
+        response1 = self.olegson_read_only_client.get(ABOUT)
+        response2 = self.olegson_read_only_client.get(ABOUT_SPEC)
+        author_title = response1.context['flatpage'].title
+        spec_title = response2.context['flatpage'].title
+        author_content = response1.context['flatpage'].content
+        spec_content = response2.context['flatpage'].content
         self.assertEqual(author_title, self.flat_about.title)
         self.assertEqual(spec_title, self.flat_tech.title)
         self.assertEqual(author_content, self.flat_about.content)
         self.assertEqual(spec_content, self.flat_tech.content)
 
-    def test_group_with_post(self):
-        response = self.author_client.get(GROUP1)
-        paginator = response.context.get('paginator').count
-        self.assertEqual(paginator, 1)
-        self.assertEqual(self.group1.posts.count(), 1)
-
     def test_group_without_post(self):
-        response = self.author_client.get(GROUP2)
+        response = self.olegson_read_only_client.get(GROUP2)
         paginator = response.context.get('paginator').count
         self.assertEqual(paginator, 0)
         self.assertEqual(self.group2.posts.count(), 0)
 
-    def test_post_has_image(self):
+    def test_add_image_to_post(self):
         uploaded = SimpleUploadedFile(
             name='small.gif',
             content=SMALL_GIF,
@@ -167,25 +160,35 @@ class PagesTests(TestCase):
         )
         form_data = {
             'text': 'Еще один тестовый текст',
+            'group': self.group1.pk,
             'image': uploaded,
         }
-        self.author_client.post(
+        self.oleg_post_creator_client.post(
             self.EDIT,
             data=form_data,
             follow=True,
         )
         post = Post.objects.all().first()
         self.assertEqual(post.image.size, form_data['image'].size)
-
-    def test_follow_page_for_user_with_following(self):
-        response = self.authorized_client1.get(FOLLOW_INDEX)
-        count = Post.objects.all().count()
-        self.assertEqual(count, 1)
-        post = response.context['page'][0]
-        self.assertEqual(post, self.post)
+        responses = [
+            INDEX,
+            GROUP1,
+            OLEG_PROFILE,
+            FOLLOW_INDEX,
+            self.POST
+        ]
+        for url in responses:
+            with self.subTest():
+                request = self.olegson_read_only_client.get(url)
+                if url == self.POST:
+                    image = request.context['post'].image
+                else:
+                    image = request.context['page'][0].image
+                self.assertTrue(image)
+                self.assertEqual(image.size, form_data['image'].size)
 
     def test_follow_page_for_user_without_following(self):
-        response = self.authorized_client2.get(FOLLOW_INDEX)
+        response = self.oleg_post_creator_client.get(FOLLOW_INDEX)
         posts_count = response.context['paginator'].count
         self.assertEqual(posts_count, 0)
 
