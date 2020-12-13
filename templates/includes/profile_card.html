@@ -27,9 +27,11 @@
                             <a class="btn btn-lg btn-primary" 
                         {% endif %} 
                         {% if following %} 
-                            href="{% url 'profile_unfollow' author.username %}" role="button">Отписаться</a>  
+                            href="{% url 'profile_unfollow' author.username %}" 
+                            role="button">Отписаться</a>  
                         {% else %} 
-                            href="{% url 'profile_follow' author.username %}" role="button">Подписаться</a> 
+                            href="{% url 'profile_follow' author.username %}" 
+                            role="button">Подписаться</a> 
                         {% endif %} 
                     </li> 
                 {% endif %}

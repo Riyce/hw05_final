@@ -5,11 +5,15 @@
     {% endthumbnail %}
     <div class="card-body" style='background: linear-gradient(315deg, #66F, #CFF)'>
         <p class="card-text">
-            <a name="post_{{ post.id }}" href="{% url 'profile' post.author.username %}"><strong class="d-block text-gray-dark">@{{ post.author }}</strong></a>
+            <a name="post_{{ post.id }}" 
+                href="{% url 'profile' post.author.username %}"><strong class="d-block text-gray-dark">@{{ post.author }}</strong>
+            </a>
             {{ post.text|linebreaksbr }}
         </p>
         {% if not group_page and post.group %} 
-            <a class="card-link muted" href="{% url 'group' post.group.slug %}"><strong class="d-block text-gray-dark">#{{ post.group.title }}</strong></a> 
+            <a class="card-link muted" 
+                href="{% url 'group' post.group.slug %}"><strong class="d-block text-gray-dark">#{{ post.group.title }}</strong>
+            </a> 
         {% endif %} 
         <div class="d-flex justify-content-between align-items-center">
             <div class="btn-group">
